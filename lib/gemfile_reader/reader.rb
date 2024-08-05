@@ -1,6 +1,7 @@
 # frozen_string_literal: true
-require 'async'
-require 'http'
+
+require "async"
+require "http"
 
 module GemfileReader
   class Reader
@@ -8,22 +9,24 @@ module GemfileReader
     GEM_REGEX = /gem\s*['"]([a-z_-]+)['"]/
     RUBY_GEMS_API_URI = "https://rubygems.org/api/v1/gems"
 
-    attr_reader :gemfile_path
+    attr_reader :gemfile_path, :local_gems, :missing_gems
 
     def initialize(gemfile_path = "Gemfile")
       @gemfile_path = gemfile_path
+      @local_gems = []
+      @missing_gems = []
     end
 
     def call
       Sync do
-        gems = gems_list.map do |gem_name|
-          Async do
-            { gem_name => fetch_gem_description(gem_name) }
-          end
+        gems_list.map do |gem_name|
+          Async { fetch_gem_description(gem_name) }
         end.map(&:wait)
-        pp "Gems list:"
-        pp gems
       end
+      pp "Local gems:"
+      pp local_gems
+      pp "Missing gems:"
+      pp missing_gems
     end
 
     private
@@ -40,8 +43,12 @@ module GemfileReader
     end
 
     def fetch_gem_description(gem_name)
-      description = local_description(gem_name) || api_description(gem_name)
-      description.delete("\n")
+      description = local_description(gem_name)
+      if description
+        local_gems << { gem_name => description.delete("\n") }
+      else
+        missing_gems << { gem_name => api_description(gem_name) }
+      end
     end
 
     def local_description(gem_name)
