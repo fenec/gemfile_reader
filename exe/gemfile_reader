@@ -1,6 +1,13 @@
 #!/usr/bin/env ruby
+# frozen_string_literal: true
 
 require_relative "../lib/gemfile_reader"
 
 gemfile_path = ARGV[0] || "Gemfile"
+
+unless File.exist?(gemfile_path)
+  warn "Error: No Gemfile found at '#{gemfile_path}'"
+  exit false
+end
+
 GemfileReader::Reader.new(gemfile_path).call

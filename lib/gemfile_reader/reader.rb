@@ -1,7 +1,8 @@
 # frozen_string_literal: true
 
 require "async"
-require "http"
+require "net/http"
+require "uri"
 
 module GemfileReader
   class Reader
@@ -59,8 +60,13 @@ module GemfileReader
     end
 
     def api_description(gem_name)
-      gem_data = HTTP.get("#{RUBY_GEMS_API_URI}/#{gem_name}.json")
-      gem_data.parse["info"]
+      uri = URI("#{RUBY_GEMS_API_URI}/#{gem_name}.json")
+      response = Net::HTTP.get_response(uri)
+      # "This rubygem could not be found." message
+      return response.body if response.is_a?(Net::HTTPNotFound)
+
+      gem_data = JSON.parse(response.body)
+      gem_data["info"]
     end
   end
 end
